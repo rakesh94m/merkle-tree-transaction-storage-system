@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Merkle Tree Transaction System</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Space+Mono&display=swap');
+
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2196F3;
+            --background-color: #f4f7f6;
+            --card-background: #ffffff;
+            --text-color: #333;
+            --subtle-text: #666;
+            --border-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --danger-color: #f44336;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 2em;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2em;
+        }
+        
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        h1 {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 1em;
+        }
+
+        .card {
+            background-color: var(--card-background);
+            padding: 2em;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            margin-top: 0;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5em;
+            margin-bottom: 1em;
+            color: var(--subtle-text);
+        }
+
+        .root-hash {
+            font-family: 'Space Mono', monospace;
+            word-break: break-all;
+            background-color: #f0f0f0;
+            padding: 0.5em;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            display: block;
+            font-size: 0.9em;
+        }
+
+        .tamper-warning, .integrity-ok {
+            font-weight: bold;
+            text-align: center;
+            padding: 1em;
+            border-radius: 8px;
+            margin-bottom: 1em;
+        }
+
+        .tamper-warning {
+            color: white;
+            background-color: var(--danger-color);
+        }
+
+        .integrity-ok {
+            color: white;
+            background-color: var(--primary-color);
+        }
+
+        form label {
+            display: block;
+            margin-bottom: 0.5em;
+            font-weight: bold;
+        }
+
+        form input {
+            width: 100%;
+            padding: 0.75em;
+            margin-bottom: 1em;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 0.75em 1.5em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #1a7bb9;
+        }
+        
+        .danger-button {
+            background-color: var(--danger-color);
+        }
+
+        .danger-button:hover {
+            background-color: #d32f2f;
+        }
+
+        .transaction-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .transaction-list li {
+            background-color: #fafafa;
+            padding: 1em;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 0.5em;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+
+        /* New CSS for Merkle Tree Visualization */
+        .merkle-tree-container {
+            display: flex;
+            flex-direction: column-reverse; /* To build the tree from the root down */
+            align-items: center;
+            padding: 1em;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            border: 1px dashed var(--border-color);
+            overflow-x: auto;
+        }
+        
+        .merkle-layer {
+            display: flex;
+            justify-content: center;
+            gap: 2em;
+            width: 100%;
+            margin-bottom: 2em;
+            position: relative;
+        }
+
+        .merkle-node {
+            background-color: #fff;
+            padding: 0.5em 1em;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-family: 'Space Mono', monospace;
+            word-break: break-all;
+            font-size: 0.8em;
+            position: relative;
+            z-index: 1; /* Ensure nodes are on top of lines */
+            text-align: center;
+        }
+        
+        .merkle-node-text {
+            color: #444;
+        }
+        
+        /* Lines connecting the nodes */
+        .merkle-layer:not(:first-child) .merkle-node::before {
+            content: '';
+            position: absolute;
+            top: -1.5em;
+            left: 50%;
+            width: 2px;
+            height: 1.5em;
+            background-color: var(--subtle-text);
+            transform: translateX(-50%);
+            z-index: 0;
+        }
+        
+        /* Merging lines for children nodes */
+        .merkle-node:nth-child(odd)::after {
+            content: '';
+            position: absolute;
+            top: -0.5em;
+            left: 50%;
+            width: calc(100% + 4em); /* Adjust width to connect to sibling */
+            height: 2px;
+            background-color: var(--subtle-text);
+            transform: translateY(-50%) translateX(-50%);
+        }
+        
+        .merkle-node:nth-child(even)::after {
+            content: '';
+            position: absolute;
+            top: -0.5em;
+            right: 50%;
+            width: calc(100% + 4em); /* Adjust width to connect to sibling */
+            height: 2px;
+            background-color: var(--subtle-text);
+            transform: translateY(-50%) translateX(50%);
+        }
+
+        /* Hide the horizontal line for the root node's children */
+        .merkle-layer:first-child .merkle-node::after {
+            display: none;
+        }
+        
+        /* New styling for tampered nodes */
+        .merkle-node.tampered {
+            background-color: #ffebee;
+            border-color: var(--danger-color);
+        }
+        
+        .merkle-node.tampered .merkle-node-text {
+            color: var(--danger-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Merkle Tree Transaction Storage</h1>
+    
+        <div class="card">
+            <h2>System Status</h2>
+            <p>Current Merkle Root:</p>
+            <span class="root-hash">{{ merkle_root }}</span>
+
+            {% if is_tampered %}
+                <p class="tamper-warning">🚨 TAMPER DETECTED! The data has been altered.</p>
+                <p>Original Root: <span class="root-hash">{{ original_root }}</span></p>
+                <p>Recomputed Root: <span class="root-hash">{{ merkle_root }}</span></p>
+            {% else %}
+                <p class="integrity-ok">✅ Data Integrity Verified. No tampering detected.</p>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h2>Add New Transaction</h2>
+            <form action="/add_transaction" method="post">
+                <label for="tx_id">TX ID:</label><input type="text" id="tx_id" name="tx_id" required>
+                <label for="sender">Sender:</label><input type="text" id="sender" name="sender" required>
+                <label for="receiver">Receiver:</label><input type="text" id="receiver" name="receiver" required>
+                <label for="amount">Amount:</label><input type="number" id="amount" name="amount" required>
+                <label for="timestamp">Timestamp:</label><input type="text" id="timestamp" name="timestamp" value="{{ current_time }}" required>
+                <button type="submit">Add Transaction</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Prove Transaction Inclusion</h2>
+            <form action="/" method="get">
+                <label for="proof_tx_id">TX ID:</label>
+                <input type="text" id="proof_tx_id" name="proof_tx_id" value="{{ proof_tx_id }}" placeholder="For example: T1" required>
+                <button type="submit">Generate Proof</button>
+            </form>
+
+            {% if proof_error %}
+                <p class="tamper-warning">{{ proof_error }}</p>
+            {% endif %}
+
+            {% if proof_data %}
+                <div class="proof-result">
+                    <p><strong>Transaction:</strong> {{ proof_data.transaction }}</p>
+                    <p><strong>Leaf index:</strong> {{ proof_data.transaction_index }}</p>
+                    <p><strong>Merkle root:</strong></p>
+                    <span class="root-hash">{{ proof_data.merkle_root }}</span>
+                    <p><strong>Sibling path:</strong></p>
+                    <ul class="proof-list">
+                        {% for step in proof_data.proof %}
+                            <li><strong>{{ step.position|capitalize }}:</strong> {{ step.hash }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Merkle Tree Visualization</h2>
+            {% if merkle_tree_layers %}
+                <div class="merkle-tree-container">
+                    {% for layer in merkle_tree_layers | reverse %}
+                        <div class="merkle-layer">
+                            {% for hash in layer %}
+                                <div class="merkle-node {% if hash in tampered_hashes %}tampered{% endif %}">
+                                    <span class="merkle-node-text">{{ hash }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>Add transactions to build the Merkle Tree.</p>
+            {% endif %}
+        </div>
+        
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Current Transactions</h2>
+            <ul class="transaction-list">
+                {% for tx in transactions %}
+                    <li>{{ tx }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
