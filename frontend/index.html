@@ -1,5 +1,78 @@
 <!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Secure Merkle Ledger</title><link rel="stylesheet" href="styles.css"></head>
-  <body><main><h1>Secure Merkle Ledger</h1><section id="auth"><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password"><button id="login">Log in</button><button id="register">Register</button></section><section id="ledger" hidden><button id="logout">Log out</button><form id="transaction"><input id="receiver" placeholder="Receiver" required><input id="amount" type="number" min="0.00000001" step="any" placeholder="Amount" required><button>Submit transaction</button></form><ul id="history"></ul><svg id="tree" role="img" aria-label="Merkle tree visualization"></svg><pre id="proof"></pre></section><p id="status"></p></main><script src="app.js"></script></body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Secure Merkle Ledger financial dashboard">
+    <title>Secure Merkle Ledger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <main class="shell">
+      <section id="auth-view" class="auth-layout">
+        <div class="auth-intro">
+          <div class="brand-mark">M</div>
+          <p class="eyebrow">SECURE LEDGER</p>
+          <h1>Trust, verified<br><span>by design.</span></h1>
+          <p class="auth-copy">Simulate a tamper-evident transaction ledger with cryptographic proof built into every transfer.</p>
+          <div class="security-note"><span class="status-dot"></span><span>Double SHA-256 protected</span></div>
+        </div>
+        <div class="auth-card card">
+          <p class="eyebrow">WELCOME BACK</p>
+          <h2 id="auth-heading">Sign in to your ledger</h2>
+          <p class="muted" id="auth-subheading">Access your secure transaction workspace.</p>
+          <form id="auth-form" novalidate>
+            <label for="email">Email address</label>
+            <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" minlength="12" placeholder="At least 12 characters" required>
+            <button class="button button-primary button-wide" id="auth-submit" type="submit">Sign in</button>
+          </form>
+          <button class="button button-link" id="auth-switch" type="button">Need an account? Create one</button>
+        </div>
+      </section>
+
+      <section id="dashboard-view" class="dashboard" hidden>
+        <header class="topbar">
+          <div class="brand"><div class="brand-mark small">M</div><span>Merkle<span class="brand-accent">Ledger</span></span></div>
+          <div class="topbar-actions"><span class="secure-label"><span class="status-dot"></span>Secure session</span><button class="button button-ghost" id="logout" type="button">Log out</button></div>
+        </header>
+        <div class="welcome-row"><div><p class="eyebrow">OVERVIEW</p><h1>Your transaction workspace</h1><p class="muted">Manage transfers and verify the integrity of your ledger.</p></div><div class="root-pill"><span class="status-dot"></span><div><span class="pill-label">CURRENT MERKLE ROOT</span><code id="root-value">No transactions</code></div></div></div>
+        <div class="dashboard-grid">
+          <section class="card submit-card">
+            <div class="card-heading"><div><p class="eyebrow">NEW TRANSFER</p><h2>Submit transaction</h2></div><span class="card-icon">↗</span></div>
+            <form id="transaction-form" novalidate>
+              <label for="receiver">Receiver</label>
+              <input id="receiver" type="text" maxlength="255" autocomplete="off" placeholder="Enter receiver name or ID" required>
+              <label for="amount">Amount</label>
+              <div class="amount-input"><span>$</span><input id="amount" type="number" min="0.00000001" step="any" inputmode="decimal" placeholder="0.00" required></div>
+              <p class="form-hint">Your authenticated account is used as the sender.</p>
+              <button class="button button-primary button-wide" id="submit-transaction" type="submit">Submit securely <span>→</span></button>
+            </form>
+          </section>
+          <section class="card stats-card">
+            <p class="eyebrow">LEDGER STATUS</p>
+            <div class="stat"><span class="stat-icon">#</span><div><span class="stat-label">Total transactions</span><strong id="transaction-count">0</strong></div></div>
+            <div class="stat"><span class="stat-icon green">✓</span><div><span class="stat-label">Integrity status</span><strong class="success-text">Verified</strong></div></div>
+            <div class="stat-foot"><span class="status-dot"></span>Anchor synchronized</div>
+          </section>
+          <section class="card history-card">
+            <div class="card-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Transaction history</h2></div><span class="table-count" id="table-count">0 records</span></div>
+            <div class="table-wrap"><table><thead><tr><th>Transaction ID</th><th>Receiver</th><th>Amount</th><th>Timestamp</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="history-body"></tbody></table><div id="empty-history" class="empty-state">No transactions yet. Submit your first secure transfer.</div></div>
+          </section>
+          <section class="card visualizer-card">
+            <div class="card-heading"><div><p class="eyebrow">INTEGRITY GRAPH</p><h2>Merkle tree</h2><p class="muted">Every node is cryptographically linked to the root.</p></div><span class="legend"><i class="legend-root"></i>Root <i class="legend-leaf"></i>Transaction</span></div>
+            <div id="tree-container" class="tree-container"><svg id="tree" role="img" aria-label="Top-to-bottom Merkle tree visualization"></svg><div id="tree-empty" class="empty-state">The tree will appear after your first transaction.</div></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
 </html>
