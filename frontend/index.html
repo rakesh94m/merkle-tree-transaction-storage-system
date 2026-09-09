@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Secure Merkle Ledger</title><link rel="stylesheet" href="styles.css"></head>
+  <body><main><h1>Secure Merkle Ledger</h1><section id="auth"><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password"><button id="login">Log in</button><button id="register">Register</button></section><section id="ledger" hidden><button id="logout">Log out</button><form id="transaction"><input id="receiver" placeholder="Receiver" required><input id="amount" type="number" min="0.00000001" step="any" placeholder="Amount" required><button>Submit transaction</button></form><ul id="history"></ul><svg id="tree" role="img" aria-label="Merkle tree visualization"></svg><pre id="proof"></pre></section><p id="status"></p></main><script src="app.js"></script></body>
+</html>

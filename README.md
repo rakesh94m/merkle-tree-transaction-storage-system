@@ -68,13 +68,20 @@ The response contains the transaction, its leaf index, the Merkle root, and the 
 ## Project structure
 
 ```text
-app.py                 Flask routes and web interface
-database_functions.py  SQLite database operations
-merkle_tree_code.py    SHA-256 and Merkle tree implementation
-templates/index.html   Web interface
-requirements.txt       Python dependencies
-transactions.db        Runtime database created when the app starts
+backend/
+  app.py                 application factory and configuration
+  models.py              SQLAlchemy User and Transaction models
+  routes/api.py          session auth and JSON REST endpoints
+  services/crypto.py     canonical JSON, double SHA-256, trees and proofs
+  services/anchor.py     signed external Merkle root/layer anchor
+frontend/                asynchronous browser client and scalable layout
+app.py                   WSGI entry point
+docker-compose.yml       backend/frontend orchestration
 ```
+
+The API uses secure HTTP-only sessions. Register and log in through
+`/api/auth/register` and `/api/auth/login`, create transactions at
+`/api/transactions`, and request an inclusion proof at `/api/proof/<tx_id>`.
 
 ## Git commands for future updates
 

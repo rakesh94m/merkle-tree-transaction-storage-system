@@ -1,1 +1,4 @@
-Flask
+Flask>=3.0
+Flask-SQLAlchemy>=3.1
+bcrypt>=4.1
+gunicorn>=22.0

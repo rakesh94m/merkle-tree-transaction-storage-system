@@ -1,0 +1,1 @@
+body { font: 16px system-ui; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; } input, button { margin: .25rem; padding: .55rem; } li { margin: .5rem 0; } pre { overflow: auto; } #tree { display: block; max-width: 100%; min-height: 120px; overflow: visible; } #tree circle { fill: #2563eb; } #tree text { fill: white; font: 10px system-ui; }
