@@ -6,10 +6,10 @@ import bcrypt
 from flask import Blueprint, current_app, jsonify, request, session
 from sqlalchemy.exc import IntegrityError
 
-from backend.extensions import db
-from backend.models import Transaction, User
-from backend.services.anchor import RootAnchor
-from backend.services.crypto import append_leaf, build_merkle_proof, build_merkle_tree, transaction_leaf
+from ..extensions import db
+from ..models import Transaction, User
+from ..services.anchor import RootAnchor
+from ..services.crypto import append_leaf, build_merkle_proof, build_merkle_tree, transaction_leaf
 
 api = Blueprint("api", __name__, url_prefix="/api")
 auth = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -84,7 +84,13 @@ def create_transaction():
         amount = Decimal(str(data.get("amount")))
     except (InvalidOperation, TypeError):
         amount = Decimal("0")
-    if not receiver or amount <= 0:
+    if (
+        not receiver
+        or len(receiver) > 255
+        or not amount.is_finite()
+        or amount <= 0
+        or amount > Decimal("9999999999.99999999")
+    ):
         return jsonify({"error": "receiver and a positive amount are required"}), 400
     user = db.session.get(User, session["user_id"])
     row = Transaction(tx_id=token_urlsafe(18), sender_user_id=user.id, receiver=receiver, amount=amount)

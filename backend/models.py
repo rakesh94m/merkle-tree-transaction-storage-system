@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import CheckConstraint, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.extensions import db
+from .extensions import db
 
 
 class User(db.Model):

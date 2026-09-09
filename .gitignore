@@ -1,4 +1,10 @@
-*.db
+.env
+.venv/
+__pycache__/
+*.py[cod]
+instance/
+backend/instance/
+frontend/node_modules/*.db
 __pycache__/
 *.py[cod]
 .venv/

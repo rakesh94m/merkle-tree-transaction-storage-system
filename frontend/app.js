@@ -1,160 +1,200 @@
-(() => {
-  "use strict";
+// Keep the API and page on the same local hostname so session cookies match.
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
-  const API_BASE_URL = (window.__API_BASE_URL__ || "http://127.0.0.1:5000/api").replace(/\/$/, "");
-  const $ = (id) => document.getElementById(id);
-  const state = { registering: false, transactions: [] };
+const $ = (id) => document.getElementById(id);
+const status = (message) => $('status').textContent = message;
+const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+})[character]);
 
-  function showToast(message, type = "error") {
-    const toast = document.createElement("div");
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    $("toast-region").append(toast);
-    window.setTimeout(() => toast.remove(), 4200);
-  }
-
-  async function request(path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      credentials: "same-origin",
-      ...options,
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+// Centralized API request handler with CORS credentials included
+const request = (url, options = {}) => 
+    fetch(`${API_BASE}${url}`, {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Crucial for persistent login sessions
+        ...options
+    }).then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
+        return data; 
+    }).catch((error) => {
+        if (error instanceof TypeError) throw new Error('Unable to connect to the API. Is the backend running on port 5000?');
+        throw error;
     });
-    let payload = {};
-    try { payload = await response.json(); } catch (_) { /* non-JSON errors use status text */ }
-    if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
-    return payload;
-  }
 
-  function setLoading(button, loading, label) {
-    button.disabled = loading;
-    button.dataset.originalLabel ||= button.textContent;
-    button.textContent = loading ? "Working…" : (label || button.dataset.originalLabel);
-  }
+// D3.js Hierarchical Tree Builder
+function renderTree(layers) {
+    const svg = d3.select('#tree');
+    svg.selectAll('*').remove(); // Clear previous tree
+    
+    if (!layers || layers.length === 0) return;
 
-  function shortHash(hash) {
-    return hash.length > 16 ? `${hash.slice(0, 8)}…${hash.slice(-7)}` : hash;
-  }
-
-  function renderHistory() {
-    const body = $("history-body");
-    body.replaceChildren();
-    $("transaction-count").textContent = state.transactions.length;
-    $("table-count").textContent = `${state.transactions.length} record${state.transactions.length === 1 ? "" : "s"}`;
-    $("empty-history").hidden = state.transactions.length > 0;
-    state.transactions.forEach((transaction) => {
-      const row = document.createElement("tr");
-      const idCell = document.createElement("td");
-      const id = document.createElement("span");
-      id.className = "tx-id";
-      id.title = transaction.tx_id;
-      id.textContent = shortHash(transaction.tx_id);
-      const copy = document.createElement("button");
-      copy.className = "copy-button";
-      copy.type = "button";
-      copy.dataset.copy = transaction.tx_id;
-      copy.setAttribute("aria-label", `Copy transaction ID ${transaction.tx_id}`);
-      copy.textContent = "⧉";
-      id.append(copy);
-      idCell.append(id);
-      const receiver = document.createElement("td");
-      receiver.textContent = transaction.receiver;
-      const amount = document.createElement("td");
-      amount.textContent = `$${Number(transaction.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`;
-      const timestamp = document.createElement("td");
-      timestamp.textContent = new Date(transaction.timestamp).toLocaleString();
-      const action = document.createElement("td");
-      const proof = document.createElement("button");
-      proof.className = "proof-button";
-      proof.type = "button";
-      proof.dataset.proof = transaction.tx_id;
-      proof.textContent = "View proof";
-      action.append(proof);
-      row.append(idCell, receiver, amount, timestamp, action);
-      body.append(row);
-    });
-  }
-
-  function hierarchyFromLayers(layers) {
-    if (!layers?.length || !layers[layers.length - 1]?.length) return null;
-    const rootIndex = layers.length - 1;
-    function node(level, index) {
-      const value = layers[level][index];
-      const children = level === 0 ? [] : [node(level - 1, index * 2)];
-      if (level > 0 && index * 2 + 1 < layers[level - 1].length) children.push(node(level - 1, index * 2 + 1));
-      return { hash: value, children };
+    // Ensure the array is top-down (root must be at index 0 for hierarchy builder)
+    let topDownLayers = layers;
+    if (layers[0].length > 1 && layers[layers.length - 1].length === 1) {
+        topDownLayers = layers.slice().reverse();
     }
-    return node(rootIndex, 0);
-  }
 
-  function renderTree(tree) {
-    const svg = d3.select("#tree");
-    svg.selectAll("*").remove();
-    const data = hierarchyFromLayers(tree.layers);
-    $("tree-empty").hidden = Boolean(data);
-    if (!data) { $("root-value").textContent = "No transactions"; return; }
-    $("root-value").textContent = shortHash(tree.root);
-    const root = d3.hierarchy(data);
-    const leaves = Math.max(root.leaves().length, 1);
-    const width = Math.max($("tree-container").clientWidth, leaves * 120);
-    const height = Math.max(root.height * 78 + 70, 250);
-    svg.attr("viewBox", `0 0 ${width} ${height}`).attr("width", width).attr("height", height);
-    d3.tree().size([width - 70, height - 55])(root);
-    const graph = svg.append("g").attr("transform", "translate(35,25)");
-    graph.append("g").selectAll("path").data(root.links()).join("path").attr("class", "tree-link").attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
-    const nodes = graph.append("g").selectAll("g").data(root.descendants()).join("g").attr("class", d => `tree-node ${d.children ? "root" : "leaf"}`).attr("transform", d => `translate(${d.x},${d.y})`);
-    nodes.append("circle").attr("r", 24);
-    nodes.append("text").attr("text-anchor", "middle").attr("dy", 4).text(d => shortHash(d.data.hash));
-    nodes.append("title").text(d => d.data.hash);
-  }
+    // Recursively convert flat layer arrays into D3-compatible hierarchy objects
+    function buildHierarchy(level, index) {
+        if (level >= topDownLayers.length) return null;
+        const name = topDownLayers[level][index];
+        if (!name) return null;
+        
+        const node = { name };
+        if (level < topDownLayers.length - 1) {
+            const left = buildHierarchy(level + 1, index * 2);
+            const right = buildHierarchy(level + 1, index * 2 + 1);
+            node.children = [];
+            if (left) node.children.push(left);
+            if (right) node.children.push(right);
+        }
+        return node;
+    }
 
-  async function refreshLedger() {
-    const [transactions, tree] = await Promise.all([request("/transactions"), request("/tree")]);
-    state.transactions = transactions.transactions || [];
-    renderHistory();
-    renderTree(tree);
-  }
+    const rootData = buildHierarchy(0, 0);
+    if (!rootData) return;
 
-  $("auth-switch").addEventListener("click", () => {
-    state.registering = !state.registering;
-    $("auth-heading").textContent = state.registering ? "Create your ledger" : "Sign in to your ledger";
-    $("auth-subheading").textContent = state.registering ? "Start securing your transactions today." : "Access your secure transaction workspace.";
-    $("auth-submit").textContent = state.registering ? "Create account" : "Sign in";
-    $("auth-switch").textContent = state.registering ? "Already registered? Sign in" : "Need an account? Create one";
-    $("password").autocomplete = state.registering ? "new-password" : "current-password";
-  });
+    // Set responsive SVG boundaries
+    const width = $('tree').clientWidth || 800;
+    const height = Math.max(300, topDownLayers.length * 80);
+    const margin = { top: 40, right: 20, bottom: 40, left: 20 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
 
-  $("auth-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const button = $("auth-submit");
-    if (!$("email").validity.valid || !$("password").validity.valid) { showToast("Enter a valid email and a password of at least 12 characters."); return; }
-    setLoading(button, true);
+    svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+    // Generate D3 layout
+    const treeLayout = d3.tree().size([innerWidth, innerHeight]);
+    const root = d3.hierarchy(rootData);
+    treeLayout(root);
+
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // 1. Draw connecting lines (paths) first so they render under the nodes
+    g.selectAll(".link")
+        .data(root.links())
+        .enter().append("path")
+        .attr("class", "link")
+        .attr("fill", "none")
+        .attr("stroke", "#cbd5e1") // Tailwind slate-300
+        .attr("stroke-width", 2)
+        .attr("d", d3.linkVertical()
+            .x(d => d.x)
+            .y(d => d.y)
+        );
+
+    // 2. Draw nodes
+    const nodeGroup = g.selectAll(".node")
+        .data(root.descendants())
+        .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", d => `translate(${d.x},${d.y})`);
+
+    nodeGroup.append("circle")
+        .attr("r", 20)
+        .attr("fill", "#6366f1") // Tailwind indigo-500
+        .attr("stroke", "#4f46e5")
+        .attr("stroke-width", 2);
+
+    // 3. Add tooltips for the full hash on hover
+    nodeGroup.append("title")
+        .text(d => d.data.name);
+
+    // 4. Add truncated hash text inside circles
+    nodeGroup.append("text")
+        .attr("dy", 4)
+        .attr("text-anchor", "middle")
+        .attr("fill", "white")
+        .style("font-size", "11px")
+        .style("font-family", "monospace")
+        .text(d => d.data.name.slice(0, 6));
+}
+
+// Fetch & populate ledger dashboard
+async function loadHistory() { 
+    const data = await request('/transactions'); 
+    
+    // Inject Tailwind-styled list items into the UI
+    $('history').innerHTML = data.transactions.map(t => `
+        <li class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-lg">
+            <span class="font-mono text-sm text-slate-600 truncate mr-2" title="${t.tx_id}">
+                ${escapeHTML(t.tx_id.slice(0,10))}... : <span class="text-emerald-600 font-semibold">${escapeHTML(t.amount)}</span> to ${escapeHTML(t.receiver)}
+            </span>
+            <button data-tx="${t.tx_id}" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1 rounded text-xs font-semibold transition">Proof</button>
+        </li>
+    `).join(''); 
+    
+    // Fetch and build the visual tree
+    const treeData = await request('/tree'); 
+    renderTree(treeData.layers);
+}
+
+// Event Listeners
+$('login').onclick = async () => { 
+    try { 
+        await request('/auth/login', {
+            method: 'POST', 
+            body: JSON.stringify({email: $('email').value, password: $('password').value})
+        }); 
+        $('auth').hidden = true; 
+        $('ledger').hidden = false; 
+        status('');
+        await loadHistory(); 
+    } catch (e) { 
+        status(e.message); 
+    } 
+};
+
+$('register').onclick = async () => { 
+    try { 
+        await request('/auth/register', {
+            method: 'POST', 
+            body: JSON.stringify({email: $('email').value, password: $('password').value})
+        }); 
+        status('Registered successfully; please log in.'); 
+        $('email').value = '';
+        $('password').value = '';
+    } catch (e) { 
+        status(e.message); 
+    } 
+};
+
+$('logout').onclick = async () => {
     try {
-      await request(state.registering ? "/auth/register" : "/auth/login", { method: "POST", body: JSON.stringify({ email: $("email").value.trim(), password: $("password").value }) });
-      if (state.registering) { showToast("Account created. You can now sign in.", "success"); $("auth-switch").click(); }
-      else { $("auth-view").hidden = true; $("dashboard-view").hidden = false; await refreshLedger(); }
-    } catch (error) { showToast(error.message); } finally { setLoading(button, false); }
-  });
+        await request('/auth/logout', { method: 'POST' });
+        location.reload();
+    } catch (error) {
+        status(error.message);
+    }
+};
 
-  $("logout").addEventListener("click", async () => {
-    try { await request("/auth/logout", { method: "POST" }); window.location.reload(); }
-    catch (error) { showToast(error.message); }
-  });
+$('transaction').onsubmit = async (e) => { 
+    e.preventDefault(); 
+    try { 
+        await request('/transactions', {
+            method: 'POST', 
+            body: JSON.stringify({receiver: $('receiver').value, amount: $('amount').value})
+        }); 
+        e.target.reset(); 
+        status('');
+        await loadHistory(); 
+    } catch (err) { 
+        status(err.message); 
+    } 
+};
 
-  $("transaction-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const receiver = $("receiver").value.trim();
-    const amount = Number($("amount").value);
-    if (!receiver || !Number.isFinite(amount) || amount <= 0) { showToast("Enter a receiver and a positive amount."); return; }
-    const button = $("submit-transaction");
-    setLoading(button, true);
-    try { await request("/transactions", { method: "POST", body: JSON.stringify({ receiver, amount }) }); event.target.reset(); showToast("Transaction submitted securely.", "success"); await refreshLedger(); }
-    catch (error) { showToast(error.message); } finally { setLoading(button, false); }
-  });
-
-  $("history-body").addEventListener("click", async (event) => {
-    const copyButton = event.target.closest("[data-copy]");
-    if (copyButton) { try { await navigator.clipboard.writeText(copyButton.dataset.copy); showToast("Transaction ID copied.", "success"); } catch (_) { showToast("Unable to access the clipboard."); } return; }
-    const proofButton = event.target.closest("[data-proof]");
-    if (proofButton) { try { const proof = await request(`/proof/${encodeURIComponent(proofButton.dataset.proof)}`); showToast(`Proof verified against ${shortHash(proof.merkle_root)}.`, "success"); } catch (error) { showToast(error.message); } }
-  });
-})();
+// Reveal Proof Data smoothly when clicked
+$('history').onclick = async (e) => { 
+    if (e.target.dataset.tx) {
+        const proofEl = $('proof');
+        proofEl.classList.remove('hidden');
+        proofEl.textContent = 'Verifying cryptographic proof...';
+        try {
+            const proofData = await request(`/proof/${e.target.dataset.tx}`);
+            proofEl.textContent = JSON.stringify(proofData, null, 2);
+        } catch (err) {
+            proofEl.textContent = `Verification Error: ${err.message}`;
+        }
+    }
+};

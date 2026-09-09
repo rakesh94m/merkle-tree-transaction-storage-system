@@ -1,78 +1,91 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Secure Merkle Ledger financial dashboard">
-    <title>Secure Merkle Ledger</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/d3@7" defer></script>
-    <script src="app.js" defer></script>
-  </head>
-  <body>
-    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Merkle Ledger | Transaction Storage System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- D3.js -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-6 min-h-screen">
+  <main class="max-w-5xl mx-auto space-y-6">
+    
+    <header class="text-center py-6">
+      <h1 class="text-3xl font-bold text-indigo-600">Merkle Tree Transaction Storage System</h1>
+      <p class="text-slate-500 mt-2">Secure Merkle Ledger with cryptographic proof-of-inclusion</p>
+    </header>
 
-    <main class="shell">
-      <section id="auth-view" class="auth-layout">
-        <div class="auth-intro">
-          <div class="brand-mark">M</div>
-          <p class="eyebrow">SECURE LEDGER</p>
-          <h1>Trust, verified<br><span>by design.</span></h1>
-          <p class="auth-copy">Simulate a tamper-evident transaction ledger with cryptographic proof built into every transfer.</p>
-          <div class="security-note"><span class="status-dot"></span><span>Double SHA-256 protected</span></div>
+    <!-- Status Message -->
+    <p id="status" class="text-center font-semibold text-rose-500"></p>
+
+    <!-- Authentication Section -->
+    <section id="auth" class="relative max-w-md mx-auto overflow-hidden rounded-2xl border border-indigo-100 bg-white/95 p-8 shadow-xl shadow-indigo-100/60 backdrop-blur">
+      <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400"></div>
+      <div class="mb-7">
+        <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-indigo-500">Private workspace</p>
+        <h2 class="text-2xl font-semibold tracking-tight text-slate-900">Access your ledger</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-500">Authenticate to inspect transactions and verify their Merkle proofs.</p>
+      </div>
+      <div class="space-y-5">
+        <div class="relative">
+          <input id="email" type="email" placeholder=" " autocomplete="email" class="peer w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 pb-2 pt-6 text-slate-900 outline-none transition placeholder:text-transparent focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10">
+          <label for="email" class="pointer-events-none absolute left-4 top-2 text-xs font-semibold text-slate-500 transition peer-placeholder-shown:top-4 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs peer-focus:text-indigo-600">Email address</label>
         </div>
-        <div class="auth-card card">
-          <p class="eyebrow">WELCOME BACK</p>
-          <h2 id="auth-heading">Sign in to your ledger</h2>
-          <p class="muted" id="auth-subheading">Access your secure transaction workspace.</p>
-          <form id="auth-form" novalidate>
-            <label for="email">Email address</label>
-            <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
-            <label for="password">Password</label>
-            <input id="password" type="password" autocomplete="current-password" minlength="12" placeholder="At least 12 characters" required>
-            <button class="button button-primary button-wide" id="auth-submit" type="submit">Sign in</button>
+        <div class="relative">
+          <input id="password" type="password" placeholder=" " autocomplete="current-password" class="peer w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 pb-2 pt-6 text-slate-900 outline-none transition placeholder:text-transparent focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10">
+          <label for="password" class="pointer-events-none absolute left-4 top-2 text-xs font-semibold text-slate-500 transition peer-placeholder-shown:top-4 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs peer-focus:text-indigo-600">Password</label>
+        </div>
+        <div class="flex flex-col gap-3 pt-2 sm:flex-row">
+          <button id="login" class="flex-1 rounded-xl bg-indigo-600 py-3 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/20">Log in</button>
+          <button id="register" class="flex-1 rounded-xl border border-slate-200 bg-white py-3 font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 focus:outline-none focus:ring-4 focus:ring-indigo-500/10">Create account</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ledger Dashboard (Hidden until logged in) -->
+    <section id="ledger" hidden class="space-y-6">
+      
+      <div class="flex justify-end">
+        <button id="logout" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2 rounded-lg transition font-medium">Log out</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Transaction Form -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h2 class="text-lg font-bold mb-4 border-b pb-2">New Transaction</h2>
+          <form id="transaction" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">Receiver</label>
+              <input id="receiver" placeholder="Wallet Address or Name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-600 mb-1">Amount</label>
+              <input id="amount" type="number" min="0.00000001" step="any" placeholder="0.00" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <button class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2 rounded-lg transition">Submit Transaction</button>
           </form>
-          <button class="button button-link" id="auth-switch" type="button">Need an account? Create one</button>
         </div>
-      </section>
 
-      <section id="dashboard-view" class="dashboard" hidden>
-        <header class="topbar">
-          <div class="brand"><div class="brand-mark small">M</div><span>Merkle<span class="brand-accent">Ledger</span></span></div>
-          <div class="topbar-actions"><span class="secure-label"><span class="status-dot"></span>Secure session</span><button class="button button-ghost" id="logout" type="button">Log out</button></div>
-        </header>
-        <div class="welcome-row"><div><p class="eyebrow">OVERVIEW</p><h1>Your transaction workspace</h1><p class="muted">Manage transfers and verify the integrity of your ledger.</p></div><div class="root-pill"><span class="status-dot"></span><div><span class="pill-label">CURRENT MERKLE ROOT</span><code id="root-value">No transactions</code></div></div></div>
-        <div class="dashboard-grid">
-          <section class="card submit-card">
-            <div class="card-heading"><div><p class="eyebrow">NEW TRANSFER</p><h2>Submit transaction</h2></div><span class="card-icon">↗</span></div>
-            <form id="transaction-form" novalidate>
-              <label for="receiver">Receiver</label>
-              <input id="receiver" type="text" maxlength="255" autocomplete="off" placeholder="Enter receiver name or ID" required>
-              <label for="amount">Amount</label>
-              <div class="amount-input"><span>$</span><input id="amount" type="number" min="0.00000001" step="any" inputmode="decimal" placeholder="0.00" required></div>
-              <p class="form-hint">Your authenticated account is used as the sender.</p>
-              <button class="button button-primary button-wide" id="submit-transaction" type="submit">Submit securely <span>→</span></button>
-            </form>
-          </section>
-          <section class="card stats-card">
-            <p class="eyebrow">LEDGER STATUS</p>
-            <div class="stat"><span class="stat-icon">#</span><div><span class="stat-label">Total transactions</span><strong id="transaction-count">0</strong></div></div>
-            <div class="stat"><span class="stat-icon green">✓</span><div><span class="stat-label">Integrity status</span><strong class="success-text">Verified</strong></div></div>
-            <div class="stat-foot"><span class="status-dot"></span>Anchor synchronized</div>
-          </section>
-          <section class="card history-card">
-            <div class="card-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Transaction history</h2></div><span class="table-count" id="table-count">0 records</span></div>
-            <div class="table-wrap"><table><thead><tr><th>Transaction ID</th><th>Receiver</th><th>Amount</th><th>Timestamp</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="history-body"></tbody></table><div id="empty-history" class="empty-state">No transactions yet. Submit your first secure transfer.</div></div>
-          </section>
-          <section class="card visualizer-card">
-            <div class="card-heading"><div><p class="eyebrow">INTEGRITY GRAPH</p><h2>Merkle tree</h2><p class="muted">Every node is cryptographically linked to the root.</p></div><span class="legend"><i class="legend-root"></i>Root <i class="legend-leaf"></i>Transaction</span></div>
-            <div id="tree-container" class="tree-container"><svg id="tree" role="img" aria-label="Top-to-bottom Merkle tree visualization"></svg><div id="tree-empty" class="empty-state">The tree will appear after your first transaction.</div></div>
-          </section>
+        <!-- Transaction History -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <h2 class="text-lg font-bold mb-4 border-b pb-2">Ledger History</h2>
+          <ul id="history" class="space-y-3 max-h-64 overflow-y-auto">
+            <!-- JS will populate list items here -->
+          </ul>
+          <pre id="proof" class="mt-4 p-3 bg-slate-800 text-emerald-400 text-xs rounded-lg overflow-x-auto hidden"></pre>
         </div>
-      </section>
-    </main>
-  </body>
+      </div>
+
+      <!-- Merkle Tree Visualization -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <h2 class="text-lg font-bold mb-4 border-b pb-2">Cryptographic Tree State</h2>
+        <svg id="tree" role="img" aria-label="Merkle tree visualization" class="w-full h-96 bg-slate-50 rounded-lg border border-slate-100"></svg>
+      </div>
+
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
 </html>
