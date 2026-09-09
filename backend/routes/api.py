@@ -6,10 +6,10 @@ import bcrypt
 from flask import Blueprint, current_app, jsonify, request, session
 from sqlalchemy.exc import IntegrityError
 
-from ..extensions import db
-from ..models import Transaction, User
-from ..services.anchor import RootAnchor
-from ..services.crypto import append_leaf, build_merkle_proof, build_merkle_tree, transaction_leaf
+from backend.extensions import db
+from backend.models import Transaction, User
+from backend.services.anchor import RootAnchor
+from backend.services.crypto import append_leaf, build_merkle_proof, build_merkle_tree, transaction_leaf
 
 api = Blueprint("api", __name__, url_prefix="/api")
 auth = Blueprint("auth", __name__, url_prefix="/api/auth")

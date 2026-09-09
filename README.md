@@ -83,6 +83,44 @@ The API uses secure HTTP-only sessions. Register and log in through
 `/api/auth/register` and `/api/auth/login`, create transactions at
 `/api/transactions`, and request an inclusion proof at `/api/proof/<tx_id>`.
 
+## Local development
+
+Run these commands from the repository root (`C:\Btech\SEM3\PYTHON\Merkle Tree Based Transactions Storage System.worktrees\merkle-tree-app-refactor-structure`):
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+$env:SECRET_KEY = "replace-with-a-long-local-secret"
+$env:MERKLE_ANCHOR_SECRET = "replace-with-a-long-anchor-secret"
+python -m backend.app
+```
+
+In a second terminal, serve the frontend:
+
+```powershell
+cd frontend
+python -m http.server 8000
+```
+
+Open `http://127.0.0.1:8000`. If your terminal is inside `backend`, use the
+absolute script path instead of relying on the current working directory:
+
+```powershell
+python "C:\Btech\SEM3\PYTHON\Merkle Tree Based Transactions Storage System.worktrees\merkle-tree-app-refactor-structure\backend\app.py"
+```
+
+For the complete containerized stack:
+
+```powershell
+$env:SECRET_KEY = "replace-with-a-long-local-secret"
+$env:MERKLE_ANCHOR_SECRET = "replace-with-a-long-anchor-secret"
+docker compose up --build
+```
+
+Then open `http://127.0.0.1:8080`.
+
 ## Git commands for future updates
 
 ```powershell

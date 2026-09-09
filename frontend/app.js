@@ -1,6 +1,7 @@
 (() => {
   "use strict";
 
+  const API_BASE_URL = (window.__API_BASE_URL__ || "http://127.0.0.1:5000/api").replace(/\/$/, "");
   const $ = (id) => document.getElementById(id);
   const state = { registering: false, transactions: [] };
 
@@ -13,7 +14,7 @@
   }
 
   async function request(path, options = {}) {
-    const response = await fetch(`/api${path}`, {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
       credentials: "same-origin",
       ...options,
       headers: { "Content-Type": "application/json", ...(options.headers || {}) }
